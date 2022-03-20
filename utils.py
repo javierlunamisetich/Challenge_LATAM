@@ -1,7 +1,8 @@
 import pandas as pd
 from datetime import date
+import matplotlib.pyplot as plt
 
-def load_data(data, path):
+def load_data(path):
     data = pd.read_csv(path)
     data['Fecha-I'] = pd.to_datetime(data['Fecha-I'], format="%Y/%m/%d %H:%M:%S")
     data['Fecha-O'] = pd.to_datetime(data['Fecha-O'], format="%Y/%m/%d %H:%M:%S")
@@ -11,7 +12,8 @@ def load_data(data, path):
 
 def is_temporada_alta(fecha):
     if (
-        date(2017, 12, 15) < fecha < date(2017, 3, 3) or
+        fecha < date(2017, 3, 3) or
+        fecha > date(2017, 12, 15) or
         date(2017, 7, 15) < fecha < date(2017, 7, 31) or
         date(2017, 9, 11) < fecha < date(2017, 9, 30)
         ):
@@ -52,14 +54,11 @@ def create_feature_temporada_alta(data):
     return df
 
 
-def create_time_features(data):
+def create_hour(data):
     
     df = data.copy()
     
-    #df['year'] = pd.DatetimeIndex(data['Fecha-I']).year
-    #df['month'] = pd.DatetimeIndex(data['Fecha-I']).month
-    df['hour'] = pd.DatetimeIndex(data['Fecha-I']).hour
-    #df['day'] = pd.DatetimeIndex(data['Fecha-I']).day
+    df['HORA'] = pd.DatetimeIndex(data['Fecha-I']).hour
 
 
     return df
@@ -67,7 +66,7 @@ def create_time_features(data):
 def create_feature_periodo_dia(data):
     df = data.copy()
     
-    df['periodo_dia'] = df['hour'].apply(lambda x: periodo_dia(x)) 
+    df['periodo_dia'] = df['HORA'].apply(lambda x: periodo_dia(x)) 
     
     return df
 
@@ -77,6 +76,22 @@ def create_syntethic_features(data):
     df = create_feature_temporada_alta(df)
     df = create_feature_dif_min(df)                                     
     df = create_feature_atraso_15(df)
+    
     df = create_feature_periodo_dia(df)
     
     return df
+
+def save_syntethic_features(data, path):
+    SYNTHETIC_FEATURES = ['temporada_alta', 'dif_min', 'atraso_15', 'periodo_dia']
+    
+    data[SYNTHETIC_FEATURES].to_csv(path, index=False)
+    
+    
+def plot_distribucion(data,var):
+    data.groupby(var).count()['atraso_15'].sort_values(axis=0,ascending=False)[:20].plot.barh(figsize=(12,5))
+    plt.xlabel('Conteo de vuelos')
+
+    
+def plot_retraso_promedio(data,var):
+    data.groupby(var).mean()['atraso_15'].sort_values(axis=0,ascending=False)[:20].plot.barh(figsize=(12,5))
+    plt.xlabel('Fracción de vuelos retrasados')
